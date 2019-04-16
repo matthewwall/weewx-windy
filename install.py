@@ -18,7 +18,6 @@ class WindyInstaller(ExtensionInstaller):
             config={
                 'StdRESTful': {
                     'Windy': {
-                        'database': 'INSERT_DATABASE_HERE',
-                        'host': 'INSERT_HOST_HERE'}}},
+                        'api_key': 'replace_me'}}},
             files=[('bin/user', ['bin/user/windy.py'])]
             )

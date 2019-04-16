@@ -21,6 +21,7 @@ from distutils.version import StrictVersion
 import json
 import sys
 import syslog
+import time
 import urllib2
 
 import weewx
@@ -115,32 +116,31 @@ class WindyThread(weewx.restx.RESTThread):
 
     def get_data(self, record):
         # the windy protocol is fairly clear, but there are a few ambiguities
-        tstr = record['dateTime']
-        rain_hour = None
-
+        rec = weewx.units.to_METRICWX(record)
         data = dict()
         data['station'] = self.station # integer identifier
-        data['dateutc'] = tstr
-        if 'outTemp' in record:
-            data['temp'] = record['outTemp'] # degree_C
-        if 'windSpeed' in record:
-            data['wind'] = record['windSpeed'] # m/s
-        if 'windDir' in record:
-            data['winddir'] = record['windDir'] # degree
-        if 'windGust' in record:
-            data['gust'] = record['windGust'] # m/s
-        if 'outHumidity' in record:
-            data['rh'] = record['outHumidity'] # percent
-        if 'dewpoint' in record:
-            data['dewpoint'] = record['dewpoint'] # degree_C
-        if 'pressure' in record:
-            data['pressure'] = record['pressure'] # Pa
-        if 'barometer' in record:
-            data['baromin'] = record['barometer'] # inHg
-        if rain_hour is not None:
-            data['precip'] = rain_hour # mm in past hour
-        if 'UV' in record:
-            data['uv'] = record['UV']
+        data['dateutc'] = time.strftime("%Y-%m-%d %H:%M:%S",
+                                        time.gmtime(rec['dateTime']))
+        if 'outTemp' in rec:
+            data['temp'] = rec['outTemp'] # degree_C
+        if 'windSpeed' in rec:
+            data['wind'] = rec['windSpeed'] # m/s
+        if 'windDir' in rec:
+            data['winddir'] = rec['windDir'] # degree
+        if 'windGust' in rec:
+            data['gust'] = rec['windGust'] # m/s
+        if 'outHumidity' in rec:
+            data['rh'] = rec['outHumidity'] # percent
+        if 'dewpoint' in rec:
+            data['dewpoint'] = rec['dewpoint'] # degree_C
+        if 'pressure' in rec:
+            data['pressure'] = rec['pressure'] # Pa
+        if 'barometer' in rec:
+            data['baromin'] = rec['barometer'] # inHg # FIXME: need to convert
+        if 'hourRain' in rec:
+            data['precip'] = rec['hourRain'] # mm in past hour
+        if 'UV' in rec:
+            data['uv'] = rec['UV']
         return json.dumps(data)
 
 

@@ -50,7 +50,8 @@ class Windy(weewx.restx.StdRESTbase):
     def __init__(self, engine, cfg_dict):
         super(Windy, self).__init__(engine, cfg_dict)        
         loginf("version is %s" % VERSION)
-        site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy', 'api_key')
+        site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy',
+                                              'api_key', 'station')
         if site_dict is None:
             return
         site_dict.setdefault('server_url', Windy._DEFAULT_URL)
@@ -72,8 +73,8 @@ class Windy(weewx.restx.StdRESTbase):
 
 class WindyThread(weewx.restx.RESTThread):
 
-    def __init__(self, queue, api_key, server_url, skip_upload=False,
-                 manager_dict=None,
+    def __init__(self, queue, api_key, server_url, station,
+                 skip_upload=False, manager_dict=None,
                  post_interval=None, max_backlog=sys.maxint, stale=None,
                  log_success=True, log_failure=True,
                  timeout=60, max_tries=3, retry_wait=5):
@@ -90,13 +91,14 @@ class WindyThread(weewx.restx.RESTThread):
                                           retry_wait=retry_wait)
         self.api_key = api_key
         self.server_url = server_url
+        self.station = station
         self.skip_upload = to_bool(skip_upload)
 
     def process_record(self, record, dbm):
         if self.augment_record and dbm:
             record = self.get_record(record, dbm)
         url = '%s:%s' % (self.server_url, self.api_key)
-        data = json.dumps(record)
+        data = self.get_data(record)
         if weewx.debug >= 2:
             logdbg('url: %s' % self.server_url)
             logdbg('data: %s' % data)
@@ -106,6 +108,22 @@ class WindyThread(weewx.restx.RESTThread):
         req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
         req.get_method = lambda: 'POST'
         self.post_with_retries(req)
+
+    def get_data(self, record):
+        data = dict()
+        data['station'] = self.station
+        data['dateutc'] = 
+        data['temp'] = 
+        data['wind'] = 
+        data['winddir'] = 
+        data['gust'] = 
+        data['rh'] = 
+        data['dewpoint'] = 
+        data['pressure'] = 
+        data['baromin'] = 
+        data['precip'] = 
+        data['uv'] = 
+        return json.dumps(data)
 
 
 # Use this hook to test the uploader:

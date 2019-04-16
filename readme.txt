@@ -3,17 +3,21 @@ Copyright 2019 Matthew Wall
 
 Installation instructions:
 
-1) run the installer:
+1) download the latest extension
 
-wee_extension --install weewx-windy.tgz
+wget -O weewx-windy.zip https://github.com/matthewwall/weewx-windy/archive/master.zip
 
-2) enter parameters in weewx.conf:
+2) run the installer
+
+wee_extension --install weewx-windy.zip
+
+3) enter parameters in the weewx configuration file
 
 [StdRESTful]
     [[Windy]]
-        
+        api_key = API_KEY        
 
-3) restart weewx:
+4) restart weewx
 
 sudo /etc/init.d/weewx stop
 sudo /etc/init.d/weewx start

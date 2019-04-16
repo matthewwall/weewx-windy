@@ -18,6 +18,7 @@ class WindyInstaller(ExtensionInstaller):
             config={
                 'StdRESTful': {
                     'Windy': {
-                        'api_key': 'replace_me'}}},
+                        'api_key': 'replace_me',
+                        'station': 0}}},
             files=[('bin/user', ['bin/user/windy.py'])]
             )

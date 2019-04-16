@@ -94,8 +94,8 @@ class WindyThread(weewx.restx.RESTThread):
                                           timeout=timeout,
                                           retry_wait=retry_wait)
         self.api_key = api_key
+        self.station = int(station)
         self.server_url = server_url
-        self.station = station
         self.skip_upload = to_bool(skip_upload)
 
     def process_record(self, record, dbm):
@@ -114,19 +114,24 @@ class WindyThread(weewx.restx.RESTThread):
         self.post_with_retries(req)
 
     def get_data(self, record):
+        # the windy protocol is fairly clear, but there are a few ambiguities
+        tstr = record['dateTime']
+        rain_hour = 0
+
         data = dict()
-        data['station'] = self.station
-        data['dateutc'] = 
-        data['temp'] = 
-        data['wind'] = 
-        data['winddir'] = 
-        data['gust'] = 
-        data['rh'] = 
-        data['dewpoint'] = 
-        data['pressure'] = 
-        data['baromin'] = 
-        data['precip'] = 
-        data['uv'] = 
+        data['station'] = self.station # integer identifier
+        data['dateutc'] = tstr
+        data['temp'] = record['outTemp'] # degree_C
+        data['wind'] = record['windSpeed'] # m/s
+        data['winddir'] = record['windDir'] # degree
+        data['gust'] = record['windGust'] # m/s
+        data['rh'] = record['outHumidity'] # percent
+        data['dewpoint'] = record['dewpoint'] # degree_C
+        data['pressure'] = record['pressure'] # Pa
+        data['baromin'] = record['barometer'] # inHg
+        data['precip'] = rain_hour # mm in past hour
+        if 'UV' in record:
+            data['uv'] = record['UV']
         return json.dumps(data)
 
 

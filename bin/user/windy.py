@@ -77,7 +77,7 @@ class Windy(weewx.restx.StdRESTbase):
 
 class WindyThread(weewx.restx.RESTThread):
 
-    def __init__(self, queue, api_key, server_url, station,
+    def __init__(self, queue, api_key, station, server_url=Windy._DEFAULT_URL,
                  skip_upload=False, manager_dict=None,
                  post_interval=None, max_backlog=sys.maxint, stale=None,
                  log_success=True, log_failure=True,
@@ -99,7 +99,7 @@ class WindyThread(weewx.restx.RESTThread):
         self.skip_upload = to_bool(skip_upload)
 
     def process_record(self, record, dbm):
-        if self.augment_record and dbm:
+        if dbm:
             record = self.get_record(record, dbm)
         url = '%s:%s' % (self.server_url, self.api_key)
         data = self.get_data(record)
@@ -116,20 +116,29 @@ class WindyThread(weewx.restx.RESTThread):
     def get_data(self, record):
         # the windy protocol is fairly clear, but there are a few ambiguities
         tstr = record['dateTime']
-        rain_hour = 0
+        rain_hour = None
 
         data = dict()
         data['station'] = self.station # integer identifier
         data['dateutc'] = tstr
-        data['temp'] = record['outTemp'] # degree_C
-        data['wind'] = record['windSpeed'] # m/s
-        data['winddir'] = record['windDir'] # degree
-        data['gust'] = record['windGust'] # m/s
-        data['rh'] = record['outHumidity'] # percent
-        data['dewpoint'] = record['dewpoint'] # degree_C
-        data['pressure'] = record['pressure'] # Pa
-        data['baromin'] = record['barometer'] # inHg
-        data['precip'] = rain_hour # mm in past hour
+        if 'outTemp' in record:
+            data['temp'] = record['outTemp'] # degree_C
+        if 'windSpeed' in record:
+            data['wind'] = record['windSpeed'] # m/s
+        if 'windDir' in record:
+            data['winddir'] = record['windDir'] # degree
+        if 'windGust' in record:
+            data['gust'] = record['windGust'] # m/s
+        if 'outHumidity' in record:
+            data['rh'] = record['outHumidity'] # percent
+        if 'dewpoint' in record:
+            data['dewpoint'] = record['dewpoint'] # degree_C
+        if 'pressure' in record:
+            data['pressure'] = record['pressure'] # Pa
+        if 'barometer' in record:
+            data['baromin'] = record['barometer'] # inHg
+        if rain_hour is not None:
+            data['precip'] = rain_hour # mm in past hour
         if 'UV' in record:
             data['uv'] = record['UV']
         return json.dumps(data)
@@ -142,9 +151,11 @@ if __name__ == "__main__":
     import time
     weewx.debug = 2
     queue = Queue.Queue()
-    t = WindyThread(queue, manager_dict=None)
+    t = WindyThread(queue, api_key='123', station=0)
     t.process_record({'dateTime': int(time.time() + 0.5),
                       'usUnits': weewx.US,
                       'outTemp': 32.5,
                       'inTemp': 75.8,
-                      'outHumidity': 24}, None)
+                      'outHumidity': 24,
+                      'windSpeed': 10,
+                      'windDir': 32}, None)

@@ -1,9 +1,13 @@
 # Copyright 2019 Matthew Wall
 
 """
+This is a weewx extension that uploads data to a windy.com
+
 http://windy.com
 
-This is a weewx extension that uploads data to a windy.com
+The protocol is desribed at the windy community forum:
+
+https://community.windy.com/topic/8168/report-you-weather-station-data-to-windy/2
 
 Minimal configuration
 

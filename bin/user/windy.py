@@ -13,21 +13,20 @@ Minimal configuration
 """
 
 import Queue
-import base64
 from distutils.version import StrictVersion
+import json
 import sys
 import syslog
-import urllib
 import urllib2
 
 import weewx
 import weewx.restx
 import weewx.units
-from weeutil.weeutil import to_bool, accumulateLeaves
+from weeutil.weeutil import to_bool
 
-VERSION = "X"
+VERSION = "0.1"
 
-REQUIRED_WEEWX = "3.5.0"
+REQUIRED_WEEWX = "3.6.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
     raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
                                    % (REQUIRED_WEEWX, weewx.__version__))
@@ -46,19 +45,15 @@ def logerr(msg):
 
 
 class Windy(weewx.restx.StdRESTbase):
+    _DEFAULT_URL = 'https://node.windy.com/pws/update'
+
     def __init__(self, engine, cfg_dict):
         super(Windy, self).__init__(engine, cfg_dict)        
         loginf("version is %s" % VERSION)
-        try:
-            site_dict = cfg_dict['StdRESTful']['Windy']
-            site_dict = accumulateLeaves(site_dict, max_level=1)
-            site_dict['api_key']
-        except KeyError, e:
-            logerr("Data will not be uploaded: Missing option %s" % e)
+        site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy', 'api_key')
+        if site_dict is None:
             return
-
-        if site_dict.get('server_url', None) is None:
-            site_dict['server_url'] = 'https://node.windy.com/pws/update'
+        site_dict.setdefault('server_url', Windy._DEFAULT_URL)
 
         self.archive_queue = Queue.Queue()
         try:
@@ -77,10 +72,8 @@ class Windy(weewx.restx.StdRESTbase):
 
 class WindyThread(weewx.restx.RESTThread):
 
-    _DEFAULT_SERVER_URL = 'http://localhost:8086'
-
-    def __init__(self, queue, api_key, server_url,
-                 skip_upload=False, manager_dict=None,
+    def __init__(self, queue, api_key, server_url, skip_upload=False,
+                 manager_dict=None,
                  post_interval=None, max_backlog=sys.maxint, stale=None,
                  log_success=True, log_failure=True,
                  timeout=60, max_tries=3, retry_wait=5):
@@ -103,7 +96,7 @@ class WindyThread(weewx.restx.RESTThread):
         if self.augment_record and dbm:
             record = self.get_record(record, dbm)
         url = '%s:%s' % (self.server_url, self.api_key)
-        data = self.get_data(record)
+        data = json.dumps(record)
         if weewx.debug >= 2:
             logdbg('url: %s' % self.server_url)
             logdbg('data: %s' % data)
@@ -113,9 +106,6 @@ class WindyThread(weewx.restx.RESTThread):
         req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
         req.get_method = lambda: 'POST'
         self.post_with_retries(req)
-
-    def get_data(self, record):
-        return data
 
 
 # Use this hook to test the uploader:

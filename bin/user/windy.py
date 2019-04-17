@@ -7,7 +7,7 @@ http://windy.com
 
 The protocol is desribed at the windy community forum:
 
-https://community.windy.com/topic/8168/report-you-weather-station-data-to-windy
+https://community.windy.com/topic/8168/report-you-weather-station-data-to-windy/2
 
 Minimal configuration
 
@@ -16,15 +16,17 @@ Minimal configuration
         api_key = API_KEY
 """
 
-import Queue
+try:
+    # Python 2
+    from Queue import Queue
+except ImportError:
+    # Python 3
+    from queue import Queue
+
 from distutils.version import StrictVersion
 import json
-import re
 import sys
 import syslog
-import time
-import urllib
-import urllib2
 
 import weewx
 import weewx.restx
@@ -33,7 +35,7 @@ from weeutil.weeutil import to_bool
 
 VERSION = "0.1"
 
-REQUIRED_WEEWX = "3.6.0"
+REQUIRED_WEEWX = "3.8.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
     raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
                                    % (REQUIRED_WEEWX, weewx.__version__))
@@ -63,10 +65,10 @@ class Windy(weewx.restx.StdRESTbase):
             return
         site_dict.setdefault('server_url', Windy._DEFAULT_URL)
 
-        self.archive_queue = Queue.Queue()
+        self.archive_queue = Queue()
         try:
             self.archive_thread = WindyThread(self.archive_queue, **site_dict)
-        except weewx.ViolatedPrecondition, e:
+        except weewx.ViolatedPrecondition as e:
             loginf("Data will not be posted: %s" % e)
             return
 
@@ -82,7 +84,7 @@ class WindyThread(weewx.restx.RESTThread):
 
     def __init__(self, queue, api_key, station, server_url=Windy._DEFAULT_URL,
                  skip_upload=False, manager_dict=None,
-                 post_interval=None, max_backlog=sys.maxint, stale=None,
+                 post_interval=None, max_backlog=sys.maxsize, stale=None,
                  log_success=True, log_failure=True,
                  timeout=60, max_tries=3, retry_wait=5):
         super(WindyThread, self).__init__(queue,
@@ -101,40 +103,14 @@ class WindyThread(weewx.restx.RESTThread):
         self.server_url = server_url
         self.skip_upload = to_bool(skip_upload)
 
-    def process_record(self, record, dbm):
-        if dbm:
-            record = self.get_record(record, dbm)
-        # windy supports either http GET or POST
-        self.upload_get(record)
-#        self.upload_post(record)
-
-    def upload_get(self, record):
-        data = self.get_data(record)
-        data = urllib.urlencode(data)
-        url = '%s/%s?%s' % (self.server_url, self.api_key, data)
-        if weewx.debug >= 2:
-            logdbg('url: %s' % url)
-        if self.skip_upload:
-            raise AbortedPost()
-        req = urllib2.Request(url)
-        req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
-        self.post_with_retries(req)
-
-    def upload_post(self, record):
-        data = self.get_data(record)
-        data = json.dumps(data)
+    def format_url(self, record):
         url = '%s/%s' % (self.server_url, self.api_key)
         if weewx.debug >= 2:
             logdbg('url: %s' % url)
-            logdbg('data: %s' % data)
-        if self.skip_upload:
-            raise AbortedPost()
-        req = urllib2.Request(url, data)
-        req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
-        req.get_method = lambda: 'POST'
-        self.post_with_retries(req)
+        return url
 
-    def get_data(self, record):
+    def get_post_body(self, record):
+        # the windy protocol is fairly clear, but there are a few ambiguities
         rec = weewx.units.to_METRICWX(record)
         data = dict()
         data['station'] = self.station # integer identifier
@@ -160,7 +136,7 @@ class WindyThread(weewx.restx.RESTThread):
             data['precip'] = rec['hourRain'] # mm in past hour
         if 'UV' in rec:
             data['uv'] = rec['UV']
-        return data
+        return json.dumps(data), 'application/json'
 
 
 # Use this hook to test the uploader:
@@ -169,7 +145,7 @@ class WindyThread(weewx.restx.RESTThread):
 if __name__ == "__main__":
     import time
     weewx.debug = 2
-    queue = Queue.Queue()
+    queue = Queue()
     t = WindyThread(queue, api_key='123', station=0)
     t.process_record({'dateTime': int(time.time() + 0.5),
                       'usUnits': weewx.US,

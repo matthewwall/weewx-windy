@@ -115,7 +115,8 @@ class WindyThread(weewx.restx.RESTThread):
         self.skip_upload = to_bool(skip_upload)
 
     def format_url(self, record):
-        url = '%s/%s?%s' % (self.server_url, self.api_key, urllib.urlencode(record))
+        data = self.get_data(record)
+        url = '%s/%s?%s' % (self.server_url, self.api_key, urllib.urlencode(data))
         if weewx.debug >= 2:
             logdbg('url: %s' % re.sub(r"api_key=.*", "api_key=XXX", url))
         return url

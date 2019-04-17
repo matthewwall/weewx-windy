@@ -115,17 +115,20 @@ class WindyThread(weewx.restx.RESTThread):
         self.skip_upload = to_bool(skip_upload)
 
     def format_url(self, record):
-        data = self.get_data(record)
+        data = self.convert_data(record)
         url = '%s/%s?%s' % (self.server_url, self.api_key, urllib.urlencode(data))
         if weewx.debug >= 2:
             logdbg('url: %s' % re.sub(r"api_key=.*", "api_key=XXX", url))
         return url
 
+    # we would like to use POST, but the windy.com servers do not seem to like
+    # it when we do that.
 #    def get_post_body(self, record):
+#        data = self.convert_data(record)
 #        obs = {"observations":[data]}
 #        return json.dumps(obs), 'application/json'
 
-    def get_data(self, record):
+    def convert_data(self, record):
         rec = weewx.units.to_METRICWX(record)
         data = dict()
         data['station'] = self.station # integer identifier

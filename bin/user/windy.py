@@ -30,6 +30,7 @@ import re
 import sys
 import syslog
 import time
+import urllib
 
 import weewx
 import weewx.restx
@@ -114,12 +115,16 @@ class WindyThread(weewx.restx.RESTThread):
         self.skip_upload = to_bool(skip_upload)
 
     def format_url(self, record):
-        url = '%s/%s' % (self.server_url, self.api_key)
+        url = '%s/%s?%s' % (self.server_url, self.api_key, urllib.urlencode(record))
         if weewx.debug >= 2:
             logdbg('url: %s' % re.sub(r"api_key=.*", "api_key=XXX", url))
         return url
 
-    def get_post_body(self, record):
+#    def get_post_body(self, record):
+#        obs = {"observations":[data]}
+#        return json.dumps(obs), 'application/json'
+
+    def get_data(self, record):
         rec = weewx.units.to_METRICWX(record)
         data = dict()
         data['station'] = self.station # integer identifier
@@ -145,8 +150,7 @@ class WindyThread(weewx.restx.RESTThread):
             data['precip'] = rec['hourRain'] # mm in past hour
         if 'UV' in rec:
             data['uv'] = rec['UV']
-        obs = {"observations":[data]}
-        return json.dumps(obs), 'application/json'
+        return data
 
 
 # Use this hook to test the uploader:
@@ -169,5 +173,5 @@ if __name__ == "__main__":
          'windSpeed': 10,
          'windDir': 32}
     print t.format_url(r)
-    print t.get_post_body(r)
+#    print t.get_post_body(r)
     t.process_record(r, FakeMgr())

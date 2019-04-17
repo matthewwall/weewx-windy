@@ -67,8 +67,11 @@ class Windy(weewx.restx.StdRESTbase):
             return
         site_dict.setdefault('server_url', Windy._DEFAULT_URL)
 
+        # FIXME: we should not have to do this here!
+        site_dict.setdefault('binding', 'wx_binding')
         mgr_dict = weewx.manager.get_manager_dict_from_config(
-            cfg_dict, 'wx_binding')
+            cfg_dict, site_dict['binding'])
+        site_dict.pop('binding')
 
         self.archive_queue = Queue()
         try:

@@ -7,7 +7,7 @@ http://windy.com
 
 The protocol is desribed at the windy community forum:
 
-https://community.windy.com/topic/8168/report-you-weather-station-data-to-windy/2
+https://community.windy.com/topic/8168/report-you-weather-station-data-to-windy
 
 Minimal configuration
 
@@ -19,6 +19,7 @@ Minimal configuration
 import Queue
 from distutils.version import StrictVersion
 import json
+import re
 import sys
 import syslog
 import time
@@ -102,14 +103,33 @@ class WindyThread(weewx.restx.RESTThread):
     def process_record(self, record, dbm):
         if dbm:
             record = self.get_record(record, dbm)
-        url = '%s:%s' % (self.server_url, self.api_key)
+        self.upload_get(record)
+#        self.upload_post(record)
+
+    def upload_get(self, record):
         data = self.get_data(record)
+        obs = []
+        for x in data:
+            obs.append("%s=%s" % (x, data[x]))
+        url = '%s/%s?%s' % (self.server_url, self.api_key, '&'.join(obs))
         if weewx.debug >= 2:
-            logdbg('url: %s' % self.server_url)
+            logdbg('url: %s' % url)
+        if self.skip_upload:
+            raise AbortedPost()
+        req = urllib2.Request(url)
+        req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
+        self.post_with_retries(req)
+
+    def upload_post(self, record):
+        data = self.get_data(record)
+        data = json.dumps(data)
+        url = '%s/%s' % (self.server_url, self.api_key)
+        if weewx.debug >= 2:
+            logdbg('url: %s' % url)
             logdbg('data: %s' % data)
         if self.skip_upload:
             raise AbortedPost()
-        req = urllib2.Request(url, '\n'.join(data))
+        req = urllib2.Request(url, data)
         req.add_header("User-Agent", "weewx/%s" % weewx.__version__)
         req.get_method = lambda: 'POST'
         self.post_with_retries(req)
@@ -141,7 +161,7 @@ class WindyThread(weewx.restx.RESTThread):
             data['precip'] = rec['hourRain'] # mm in past hour
         if 'UV' in rec:
             data['uv'] = rec['UV']
-        return json.dumps(data)
+        return data
 
 
 # Use this hook to test the uploader:

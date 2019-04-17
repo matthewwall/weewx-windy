@@ -17,12 +17,16 @@ Minimal configuration
         station = STATION_IDENTIFIER
 """
 
+# deal with differences between python 2 and python 3
 try:
-    # Python 2
     from Queue import Queue
 except ImportError:
-    # Python 3
     from queue import Queue
+
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode
 
 from distutils.version import StrictVersion
 import json
@@ -30,7 +34,6 @@ import re
 import sys
 import syslog
 import time
-import urllib
 
 import weewx
 import weewx.restx
@@ -116,7 +119,7 @@ class WindyThread(weewx.restx.RESTThread):
 
     def format_url(self, record):
         data = self.convert_data(record)
-        url = '%s/%s?%s' % (self.server_url, self.api_key, urllib.urlencode(data))
+        url = '%s/%s?%s' % (self.server_url, self.api_key, urlencode(data))
         if weewx.debug >= 2:
             logdbg('url: %s' % re.sub(r"api_key=.*", "api_key=XXX", url))
         return url

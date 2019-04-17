@@ -7,7 +7,7 @@ http://windy.com
 
 The protocol is desribed at the windy community forum:
 
-https://community.windy.com/topic/8168/report-you-weather-station-data-to-windy/2
+https://community.windy.com/topic/8168/report-you-weather-station-data-to-windy
 
 Minimal configuration
 
@@ -110,7 +110,6 @@ class WindyThread(weewx.restx.RESTThread):
         return url
 
     def get_post_body(self, record):
-        # the windy protocol is fairly clear, but there are a few ambiguities
         rec = weewx.units.to_METRICWX(record)
         data = dict()
         data['station'] = self.station # integer identifier

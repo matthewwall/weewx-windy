@@ -67,9 +67,14 @@ class Windy(weewx.restx.StdRESTbase):
             return
         site_dict.setdefault('server_url', Windy._DEFAULT_URL)
 
+        mgr_dict = weewx.manager.get_manager_dict_from_config(
+            cfg_dict, 'wx_binding')
+
         self.archive_queue = Queue()
         try:
-            self.archive_thread = WindyThread(self.archive_queue, **site_dict)
+            self.archive_thread = WindyThread(self.archive_queue,
+                                              manager_dict=mgr_dict,
+                                              **site_dict)
         except weewx.ViolatedPrecondition as e:
             loginf("Data will not be posted: %s" % e)
             return

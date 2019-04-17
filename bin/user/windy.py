@@ -25,6 +25,7 @@ except ImportError:
 
 from distutils.version import StrictVersion
 import json
+import re
 import sys
 import syslog
 
@@ -106,7 +107,7 @@ class WindyThread(weewx.restx.RESTThread):
     def format_url(self, record):
         url = '%s/%s' % (self.server_url, self.api_key)
         if weewx.debug >= 2:
-            logdbg('url: %s' % url)
+            logdbg('url: %s' % re.sub(r"api_key=.*", "api_key=XXX", url))
         return url
 
     def get_post_body(self, record):

@@ -1,6 +1,10 @@
 windy - weewx extension that sends data to windy.com
 Copyright 2019 Matthew Wall
 
+You will need an API key from windy.com
+
+  https://stations.windy.com/
+
 Installation instructions:
 
 1) download the latest extension

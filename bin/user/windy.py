@@ -14,6 +14,7 @@ Minimal configuration
 [StdRESTful]
     [[Windy]]
         api_key = API_KEY
+        station = STATION_IDENTIFIER
 """
 
 try:

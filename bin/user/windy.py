@@ -57,7 +57,7 @@ def logerr(msg):
 
 
 class Windy(weewx.restx.StdRESTbase):
-    _DEFAULT_URL = 'https://node.windy.com/pws/update'
+    _DEFAULT_URL = 'https://stations.windy.com/pws/update'
 
     def __init__(self, engine, cfg_dict):
         super(Windy, self).__init__(engine, cfg_dict)        

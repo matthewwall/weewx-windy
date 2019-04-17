@@ -29,6 +29,7 @@ import json
 import re
 import sys
 import syslog
+import time
 
 import weewx
 import weewx.restx
@@ -157,7 +158,6 @@ if __name__ == "__main__":
         def getSql(self, query, value):
             return None
 
-    import time
     weewx.debug = 2
     queue = Queue()
     t = WindyThread(queue, api_key='123', station=0)

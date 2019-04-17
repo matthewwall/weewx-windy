@@ -145,7 +145,8 @@ class WindyThread(weewx.restx.RESTThread):
             data['precip'] = rec['hourRain'] # mm in past hour
         if 'UV' in rec:
             data['uv'] = rec['UV']
-        return json.dumps(data), 'application/json'
+        obs = {"observations":[data]}
+        return json.dumps(obs), 'application/json'
 
 
 # Use this hook to test the uploader:

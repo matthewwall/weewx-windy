@@ -143,14 +143,22 @@ class WindyThread(weewx.restx.RESTThread):
 #   PYTHONPATH=bin python bin/user/windy.py
 
 if __name__ == "__main__":
+    class FakeMgr(object):
+        table_name = 'fake'
+        def getSql(self, query, value):
+            return None
+
     import time
     weewx.debug = 2
     queue = Queue()
     t = WindyThread(queue, api_key='123', station=0)
-    t.process_record({'dateTime': int(time.time() + 0.5),
-                      'usUnits': weewx.US,
-                      'outTemp': 32.5,
-                      'inTemp': 75.8,
-                      'outHumidity': 24,
-                      'windSpeed': 10,
-                      'windDir': 32}, None)
+    r = {'dateTime': int(time.time() + 0.5),
+         'usUnits': weewx.US,
+         'outTemp': 32.5,
+         'inTemp': 75.8,
+         'outHumidity': 24,
+         'windSpeed': 10,
+         'windDir': 32}
+    print t.format_url(r)
+    print t.get_post_body(r)
+    t.process_record(r, FakeMgr())

@@ -104,6 +104,7 @@ class WindyThread(weewx.restx.RESTThread):
     def process_record(self, record, dbm):
         if dbm:
             record = self.get_record(record, dbm)
+        # windy supports either http GET or POST
         self.upload_get(record)
 #        self.upload_post(record)
 
@@ -134,7 +135,6 @@ class WindyThread(weewx.restx.RESTThread):
         self.post_with_retries(req)
 
     def get_data(self, record):
-        # the windy protocol is fairly clear, but there are a few ambiguities
         rec = weewx.units.to_METRICWX(record)
         data = dict()
         data['station'] = self.station # integer identifier

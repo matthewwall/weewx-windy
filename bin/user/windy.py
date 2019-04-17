@@ -23,6 +23,7 @@ import re
 import sys
 import syslog
 import time
+import urllib
 import urllib2
 
 import weewx
@@ -108,10 +109,8 @@ class WindyThread(weewx.restx.RESTThread):
 
     def upload_get(self, record):
         data = self.get_data(record)
-        obs = []
-        for x in data:
-            obs.append("%s=%s" % (x, data[x]))
-        url = '%s/%s?%s' % (self.server_url, self.api_key, '&'.join(obs))
+        data = urllib.urlencode(data)
+        url = '%s/%s?%s' % (self.server_url, self.api_key, data)
         if weewx.debug >= 2:
             logdbg('url: %s' % url)
         if self.skip_upload:

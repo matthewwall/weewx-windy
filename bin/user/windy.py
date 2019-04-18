@@ -205,6 +205,6 @@ if __name__ == "__main__":
          'outHumidity': 24,
          'windSpeed': 10,
          'windDir': 32}
-    print t.format_url(r)
+    print(t.format_url(r))
 #    print t.get_post_body(r)
     t.process_record(r, FakeMgr())

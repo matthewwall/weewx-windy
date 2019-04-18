@@ -64,7 +64,7 @@ class Windy(weewx.restx.StdRESTbase):
     _DEFAULT_URL = 'https://stations.windy.com/pws/update'
 
     def __init__(self, engine, cfg_dict):
-        super(Windy, self).__init__(engine, cfg_dict)        
+        super(Windy, self).__init__(engine, cfg_dict)
         loginf("version is %s" % VERSION)
         site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy',
                                               'api_key', 'station')
@@ -205,6 +205,6 @@ if __name__ == "__main__":
          'outHumidity': 24,
          'windSpeed': 10,
          'windDir': 32}
-    print t.format_url(r)
-#    print t.get_post_body(r)
+    print(t.format_url(r))
+#    print(t.get_post_body(r))
     t.process_record(r, FakeMgr())

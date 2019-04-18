@@ -47,14 +47,18 @@ if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
     raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
                                    % (REQUIRED_WEEWX, weewx.__version__))
 
+
 def logmsg(level, msg):
     syslog.syslog(level, 'restx: Windy: %s' % msg)
+
 
 def logdbg(msg):
     logmsg(syslog.LOG_DEBUG, msg)
 
+
 def loginf(msg):
     logmsg(syslog.LOG_INFO, msg)
+
 
 def logerr(msg):
     logmsg(syslog.LOG_ERR, msg)
@@ -64,7 +68,7 @@ class Windy(weewx.restx.StdRESTbase):
     _DEFAULT_URL = 'https://stations.windy.com/pws/update'
 
     def __init__(self, engine, cfg_dict):
-        super(Windy, self).__init__(engine, cfg_dict)        
+        super(Windy, self).__init__(engine, cfg_dict)
         loginf("version is %s" % VERSION)
         site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy',
                                               'api_key', 'station')
@@ -117,73 +121,72 @@ class WindyThread(weewx.restx.RESTThread):
         self.server_url = server_url
         self.skip_upload = to_bool(skip_upload)
 
-    def format_url(self, record):
-        data = self.convert_data_GET(record)
+    def format_url_GET(self, record):
+        rec = weewx.units.to_US(record)
+        data = dict()
+        if 'outTemp' in rec:
+            data['tempf'] = rec['outTemp']  # degree_F
+        if 'windSpeed' in rec:
+            data['windspeedmph'] = rec['windSpeed']  # mph
+        if 'windDir' in rec:
+            data['winddir'] = rec['windDir']  # degree
+        if 'windGust' in rec:
+            data['windgustmph'] = rec['windGust']  # mph
+        if 'outHumidity' in rec:
+            data['rh'] = rec['outHumidity']  # percent
+        if 'dewpoint' in rec:
+            data['dewptf'] = rec['dewpoint']  # degree_C
+        if 'barometer' in rec:
+            data['baromin'] = rec['barometer']  # inHg
+        if 'hourRain' in rec:
+            data['rainin'] = rec['hourRain']  # inch in past hour
+        if 'UV' in rec:
+            data['uv'] = rec['UV']
         url = '%s/%s?%s' % (self.server_url, self.api_key, urlencode(data))
         if weewx.debug >= 2:
             logdbg('url: %s' % re.sub(r"/.*\?", "XXX", url))
         return url
 
-    # we would like to use POST, but the windy.com servers do not seem to like
-    # it when we do that.
-#    def get_post_body(self, record):
-#        data = self.convert_data(record)
-#        obs = {"observations":[data]}
-#        return json.dumps(obs), 'application/json'
+    def format_url_POST(self, _):
+        url = '%s/%s' % (self.server_url, self.api_key)
+        return url
 
-    def convert_data_POST(self, record):
-        # this is based on the 'specification' from windy.com, but it does not
-        # work as of april 2019.
-        rec = weewx.units.to_METRICWX(record)
+    def format_url(self, record):
+        return self.format_url_GET(record)
+        # return self.format_url_POST(record)
+
+    def get_post_body(self, record):
+        record_us = weewx.units.to_METRICWX(record)
         data = dict()
-        data['station'] = self.station # integer identifier
+        data['station'] = self.station  # integer identifier
         data['dateutc'] = time.strftime("%Y-%m-%d %H:%M:%S",
-                                        time.gmtime(rec['dateTime']))
-        if 'outTemp' in rec:
-            data['temp'] = rec['outTemp'] # degree_C
-        if 'windSpeed' in rec:
-            data['wind'] = rec['windSpeed'] # m/s
-        if 'windDir' in rec:
-            data['winddir'] = rec['windDir'] # degree
-        if 'windGust' in rec:
-            data['gust'] = rec['windGust'] # m/s
-        if 'outHumidity' in rec:
-            data['rh'] = rec['outHumidity'] # percent
-        if 'dewpoint' in rec:
-            data['dewpoint'] = rec['dewpoint'] # degree_C
-        if 'pressure' in rec:
-            data['pressure'] = rec['pressure'] # Pa
-        if 'barometer' in rec:
-            data['baromin'] = rec['barometer'] # inHg # FIXME: need to convert
-        if 'hourRain' in rec:
-            data['precip'] = rec['hourRain'] # mm in past hour
-        if 'UV' in rec:
-            data['uv'] = rec['UV']
-        return data
+                                        time.gmtime(record_us['dateTime']))
+        if 'outTemp' in record_us:
+            data['temp'] = record_us['outTemp']  # degree_C
+        if 'windSpeed' in record_us:
+            data['wind'] = record_us['windSpeed']  # m/s
+        if 'windDir' in record_us:
+            data['winddir'] = record_us['windDir']  # degree
+        if 'windGust' in record_us:
+            data['gust'] = record_us['windGust']  # m/s
+        if 'outHumidity' in record_us:
+            data['rh'] = record_us['outHumidity']  # percent
+        if 'dewpoint' in record_us:
+            data['dewpoint'] = record_us['dewpoint']  # degree_C
+        if 'pressure' in record_us:
+            data['pressure'] = record_us['pressure']  # Pa
+        if 'barometer' in record_us:
+            data['baromin'] = record_us['barometer']  # inHg # FIXME: need to convert
+        if 'hourRain' in record_us:
+            data['precip'] = record_us['hourRain']  # mm in past hour
+        if 'UV' in record_us:
+            data['uv'] = record_us['UV']
 
-    def convert_data_GET(self, record):
-        # apparently the GET postings must be US units, not metric
-        rec = weewx.units.to_US(record)
-        data = dict()
-        if 'outTemp' in rec:
-            data['tempf'] = rec['outTemp'] # degree_F
-        if 'windSpeed' in rec:
-            data['windspeedmph'] = rec['windSpeed'] # mph
-        if 'windDir' in rec:
-            data['winddir'] = rec['windDir'] # degree
-        if 'windGust' in rec:
-            data['windgustmph'] = rec['windGust'] # mph
-        if 'outHumidity' in rec:
-            data['rh'] = rec['outHumidity'] # percent
-        if 'dewpoint' in rec:
-            data['dewptf'] = rec['dewpoint'] # degree_C
-        if 'barometer' in rec:
-            data['baromin'] = rec['barometer'] # inHg
-        if 'hourRain' in rec:
-            data['rainin'] = rec['hourRain'] # inch in past hour
-        if 'UV' in rec:
-            data['uv'] = rec['UV']
-        return data
+        body = {
+            'observations': [data]
+        }
+
+        return json.dumps(body), 'application/json'
 
 
 # Use this hook to test the uploader:
@@ -192,8 +195,10 @@ class WindyThread(weewx.restx.RESTThread):
 if __name__ == "__main__":
     class FakeMgr(object):
         table_name = 'fake'
+
         def getSql(self, query, value):
             return None
+
 
     weewx.debug = 2
     queue = Queue()
@@ -206,5 +211,5 @@ if __name__ == "__main__":
          'windSpeed': 10,
          'windDir': 32}
     print(t.format_url(r))
-#    print t.get_post_body(r)
+    #    print t.get_post_body(r)
     t.process_record(r, FakeMgr())

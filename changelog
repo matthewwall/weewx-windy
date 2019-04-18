@@ -1,3 +1,6 @@
+0.3 18apr2019
+* Windy has fixed POSTS, so use them exclusively
+
 0.2 18apr2019
 * workaround windy bug - they seem to accept imperial units but not metric
 

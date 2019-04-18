@@ -30,7 +30,6 @@ except ImportError:
 
 from distutils.version import StrictVersion
 import json
-import re
 import sys
 import syslog
 import time
@@ -40,25 +39,21 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool
 
-VERSION = "0.2"
+VERSION = "0.3"
 
 REQUIRED_WEEWX = "3.8.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
     raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
                                    % (REQUIRED_WEEWX, weewx.__version__))
 
-
 def logmsg(level, msg):
     syslog.syslog(level, 'restx: Windy: %s' % msg)
-
 
 def logdbg(msg):
     logmsg(syslog.LOG_DEBUG, msg)
 
-
 def loginf(msg):
     logmsg(syslog.LOG_INFO, msg)
-
 
 def logerr(msg):
     logmsg(syslog.LOG_ERR, msg)
@@ -82,13 +77,9 @@ class Windy(weewx.restx.StdRESTbase):
             cfg_dict, binding)
 
         self.archive_queue = Queue()
-        try:
-            self.archive_thread = WindyThread(self.archive_queue,
-                                              manager_dict=mgr_dict,
-                                              **site_dict)
-        except weewx.ViolatedPrecondition as e:
-            loginf("Data will not be posted: %s" % e)
-            return
+        self.archive_thread = WindyThread(self.archive_queue,
+                                          manager_dict=mgr_dict,
+                                          **site_dict)
 
         self.archive_thread.start()
         self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
@@ -121,66 +112,37 @@ class WindyThread(weewx.restx.RESTThread):
         self.server_url = server_url
         self.skip_upload = to_bool(skip_upload)
 
-    def format_url_GET(self, record):
-        rec = weewx.units.to_US(record)
-        data = dict()
-        if 'outTemp' in rec:
-            data['tempf'] = rec['outTemp']  # degree_F
-        if 'windSpeed' in rec:
-            data['windspeedmph'] = rec['windSpeed']  # mph
-        if 'windDir' in rec:
-            data['winddir'] = rec['windDir']  # degree
-        if 'windGust' in rec:
-            data['windgustmph'] = rec['windGust']  # mph
-        if 'outHumidity' in rec:
-            data['rh'] = rec['outHumidity']  # percent
-        if 'dewpoint' in rec:
-            data['dewptf'] = rec['dewpoint']  # degree_C
-        if 'barometer' in rec:
-            data['baromin'] = rec['barometer']  # inHg
-        if 'hourRain' in rec:
-            data['rainin'] = rec['hourRain']  # inch in past hour
-        if 'UV' in rec:
-            data['uv'] = rec['UV']
-        url = '%s/%s?%s' % (self.server_url, self.api_key, urlencode(data))
-        if weewx.debug >= 2:
-            logdbg('url: %s' % re.sub(r"/.*\?", "XXX", url))
-        return url
-
-    def format_url_POST(self, _):
+    def format_url(self, _):
+        """Return an URL for doing a POST to windy"""
         url = '%s/%s' % (self.server_url, self.api_key)
         return url
 
-    def format_url(self, record):
-        return self.format_url_GET(record)
-        # return self.format_url_POST(record)
-
     def get_post_body(self, record):
-        record_us = weewx.units.to_METRICWX(record)
-        data = dict()
-        data['station'] = self.station  # integer identifier
-        data['dateutc'] = time.strftime("%Y-%m-%d %H:%M:%S",
-                                        time.gmtime(record_us['dateTime']))
-        if 'outTemp' in record_us:
-            data['temp'] = record_us['outTemp']  # degree_C
-        if 'windSpeed' in record_us:
-            data['wind'] = record_us['windSpeed']  # m/s
-        if 'windDir' in record_us:
-            data['winddir'] = record_us['windDir']  # degree
-        if 'windGust' in record_us:
-            data['gust'] = record_us['windGust']  # m/s
-        if 'outHumidity' in record_us:
-            data['rh'] = record_us['outHumidity']  # percent
-        if 'dewpoint' in record_us:
-            data['dewpoint'] = record_us['dewpoint']  # degree_C
-        if 'pressure' in record_us:
-            data['pressure'] = record_us['pressure']  # Pa
-        if 'barometer' in record_us:
-            data['baromin'] = record_us['barometer']  # inHg # FIXME: need to convert
-        if 'hourRain' in record_us:
-            data['precip'] = record_us['hourRain']  # mm in past hour
-        if 'UV' in record_us:
-            data['uv'] = record_us['UV']
+        """Specialized version for doing a POST to windy"""
+        record_m = weewx.units.to_METRICWX(record)
+        data = {
+            'station': self.station,  # integer identifier, usually "0"
+            'dateutc':time.strftime("%Y-%m-%d %H:%M:%S",
+                                    time.gmtime(record_m['dateTime']))
+            }
+        if 'outTemp' in record_m:
+            data['temp'] = record_m['outTemp']  # degree_C
+        if 'windSpeed' in record_m:
+            data['wind'] = record_m['windSpeed']  # m/s
+        if 'windDir' in record_m:
+            data['winddir'] = record_m['windDir']  # degree
+        if 'windGust' in record_m:
+            data['gust'] = record_m['windGust']  # m/s
+        if 'outHumidity' in record_m:
+            data['rh'] = record_m['outHumidity']  # percent
+        if 'dewpoint' in record_m:
+            data['dewpoint'] = record_m['dewpoint']  # degree_C
+        if 'barometer' in record_m:
+            data['pressure'] = 100.0 * record_m['barometer']  # Pascals
+        if 'hourRain' in record_m:
+            data['precip'] = record_m['hourRain']  # mm in past hour
+        if 'UV' in record_m:
+            data['uv'] = record_m['UV']
 
         body = {
             'observations': [data]
@@ -211,5 +173,5 @@ if __name__ == "__main__":
          'windSpeed': 10,
          'windDir': 32}
     print(t.format_url(r))
-    #    print t.get_post_body(r)
+#    print(t.get_post_body(r))
     t.process_record(r, FakeMgr())

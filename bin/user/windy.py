@@ -40,7 +40,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool
 
-VERSION = "0.1"
+VERSION = "0.2"
 
 REQUIRED_WEEWX = "3.8.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -118,10 +118,10 @@ class WindyThread(weewx.restx.RESTThread):
         self.skip_upload = to_bool(skip_upload)
 
     def format_url(self, record):
-        data = self.convert_data(record)
+        data = self.convert_data_GET(record)
         url = '%s/%s?%s' % (self.server_url, self.api_key, urlencode(data))
         if weewx.debug >= 2:
-            logdbg('url: %s' % re.sub(r"api_key=.*", "api_key=XXX", url))
+            logdbg('url: %s' % re.sub(r"/.*\?", "XXX", url))
         return url
 
     # we would like to use POST, but the windy.com servers do not seem to like
@@ -131,7 +131,9 @@ class WindyThread(weewx.restx.RESTThread):
 #        obs = {"observations":[data]}
 #        return json.dumps(obs), 'application/json'
 
-    def convert_data(self, record):
+    def convert_data_POST(self, record):
+        # this is based on the 'specification' from windy.com, but it does not
+        # work as of april 2019.
         rec = weewx.units.to_METRICWX(record)
         data = dict()
         data['station'] = self.station # integer identifier
@@ -155,6 +157,30 @@ class WindyThread(weewx.restx.RESTThread):
             data['baromin'] = rec['barometer'] # inHg # FIXME: need to convert
         if 'hourRain' in rec:
             data['precip'] = rec['hourRain'] # mm in past hour
+        if 'UV' in rec:
+            data['uv'] = rec['UV']
+        return data
+
+    def convert_data_GET(self, record):
+        # apparently the GET postings must be US units, not metric
+        rec = weewx.units.to_US(record)
+        data = dict()
+        if 'outTemp' in rec:
+            data['tempf'] = rec['outTemp'] # degree_F
+        if 'windSpeed' in rec:
+            data['windspeedmph'] = rec['windSpeed'] # mph
+        if 'windDir' in rec:
+            data['winddir'] = rec['windDir'] # degree
+        if 'windGust' in rec:
+            data['windgustmph'] = rec['windGust'] # mph
+        if 'outHumidity' in rec:
+            data['rh'] = rec['outHumidity'] # percent
+        if 'dewpoint' in rec:
+            data['dewptf'] = rec['dewpoint'] # degree_C
+        if 'barometer' in rec:
+            data['baromin'] = rec['barometer'] # inHg
+        if 'hourRain' in rec:
+            data['rainin'] = rec['hourRain'] # inch in past hour
         if 'UV' in rec:
             data['uv'] = rec['UV']
         return data

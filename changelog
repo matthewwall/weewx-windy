@@ -1,2 +1,5 @@
+0.2 18apr2019
+* workaround windy bug - they seem to accept imperial units but not metric
+
 0.1 16apr2019
 * initial release

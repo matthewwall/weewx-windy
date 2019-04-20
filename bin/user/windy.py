@@ -39,7 +39,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool
 
-VERSION = "0.3"
+VERSION = "0.31"
 
 REQUIRED_WEEWX = "3.8.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -115,6 +115,8 @@ class WindyThread(weewx.restx.RESTThread):
     def format_url(self, _):
         """Return an URL for doing a POST to windy"""
         url = '%s/%s' % (self.server_url, self.api_key)
+        if weewx.debug >= 2:
+            logdbg("url: %s" % url)
         return url
 
     def get_post_body(self, record):
@@ -147,6 +149,8 @@ class WindyThread(weewx.restx.RESTThread):
         body = {
             'observations': [data]
         }
+        if weewx.debug >= 2:
+            logdbg("JSON: %s" % body)
 
         return json.dumps(body), 'application/json'
 

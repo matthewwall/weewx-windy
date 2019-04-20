@@ -1,3 +1,6 @@
+0.31 20apr2019
+* If debug >= 2, post urls and JSON to the log
+
 0.3 18apr2019
 * Windy has fixed POSTS, so use them exclusively
 

@@ -14,6 +14,16 @@ Minimal configuration
 [StdRESTful]
     [[Windy]]
         api_key = API_KEY
+
+If you have multiple stations, distinguish them using a station identifier.
+For example:
+
+[StdRESTful]
+    [[Windy]]
+        api_key = API_KEY
+        station = 1
+
+The default station identifier is 0.
 """
 
 # deal with differences between python 2 and python 3

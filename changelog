@@ -1,3 +1,6 @@
+0.4 23apr2019
+* station id is necessary only for multiple stations, and is an integer
+
 0.3 18apr2019
 * Windy has fixed POSTS, so use them exclusively
 

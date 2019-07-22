@@ -9,7 +9,7 @@ def loader():
 class WindyInstaller(ExtensionInstaller):
     def __init__(self):
         super(WindyInstaller, self).__init__(
-            version="0.2",
+            version="0.41",
             name='windy',
             description='Upload weather data to Windy.',
             author="Matthew Wall",
@@ -18,7 +18,6 @@ class WindyInstaller(ExtensionInstaller):
             config={
                 'StdRESTful': {
                     'Windy': {
-                        'api_key': 'replace_me',
-                        'station': 0}}},
+                        'api_key': 'replace_me'}}},
             files=[('bin/user', ['bin/user/windy.py'])]
             )

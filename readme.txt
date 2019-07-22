@@ -20,7 +20,6 @@ wee_extension --install weewx-windy.zip
 [StdRESTful]
     [[Windy]]
         api_key = API_KEY
-        station = STATION_IDENTIFIER
 
 4) restart weewx
 

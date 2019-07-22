@@ -14,7 +14,16 @@ Minimal configuration
 [StdRESTful]
     [[Windy]]
         api_key = API_KEY
-        station = STATION_IDENTIFIER
+
+If you have multiple stations, distinguish them using a station identifier.
+For example:
+
+[StdRESTful]
+    [[Windy]]
+        api_key = API_KEY
+        station = 1
+
+The default station identifier is 0.
 """
 
 # deal with differences between python 2 and python 3
@@ -39,7 +48,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool
 
-VERSION = "0.31"
+VERSION = "0.41"
 
 REQUIRED_WEEWX = "3.8.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -65,10 +74,10 @@ class Windy(weewx.restx.StdRESTbase):
     def __init__(self, engine, cfg_dict):
         super(Windy, self).__init__(engine, cfg_dict)
         loginf("version is %s" % VERSION)
-        site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy',
-                                              'api_key', 'station')
+        site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy', 'api_key')
         if site_dict is None:
             return
+        site_dict.setdefault('station', 0)
         site_dict.setdefault('server_url', Windy._DEFAULT_URL)
 
         # FIXME: we should not have to do this here!
@@ -108,7 +117,7 @@ class WindyThread(weewx.restx.RESTThread):
                                           timeout=timeout,
                                           retry_wait=retry_wait)
         self.api_key = api_key
-        self.station = int(station)
+        self.station = station
         self.server_url = server_url
         self.skip_upload = to_bool(skip_upload)
 

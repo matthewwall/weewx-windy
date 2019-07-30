@@ -9,7 +9,7 @@ def loader():
 class WindyInstaller(ExtensionInstaller):
     def __init__(self):
         super(WindyInstaller, self).__init__(
-            version="0.4",
+            version="0.5",
             name='windy',
             description='Upload weather data to Windy.',
             author="Matthew Wall",

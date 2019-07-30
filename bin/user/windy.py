@@ -28,48 +28,60 @@ The default station identifier is 0.
 
 # deal with differences between python 2 and python 3
 try:
+    # noinspection PyCompatibility
     from Queue import Queue
 except ImportError:
+    # noinspection PyCompatibility
     from queue import Queue
 
 try:
     from urllib import urlencode
 except ImportError:
+    # noinspection PyCompatibility
     from urllib.parse import urlencode
 
 from distutils.version import StrictVersion
 import json
 import sys
-import syslog
 import time
 
 import weewx
+import weewx.manager
 import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool
 
-VERSION = "0.4"
+VERSION = "0.5"
 
 REQUIRED_WEEWX = "3.8.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
     raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
                                    % (REQUIRED_WEEWX, weewx.__version__))
 
-def logmsg(level, msg):
-    syslog.syslog(level, 'restx: Windy: %s' % msg)
+try:
+    from weeutil.log import logdbg, loginf, logerr
+except ImportError:
+    import syslog
 
-def logdbg(msg):
-    logmsg(syslog.LOG_DEBUG, msg)
 
-def loginf(msg):
-    logmsg(syslog.LOG_INFO, msg)
+    def logmsg(level, msg):
+        syslog.syslog(level, 'restx: Windy: %s' % msg)
 
-def logerr(msg):
-    logmsg(syslog.LOG_ERR, msg)
+
+    def logdbg(msg):
+        logmsg(syslog.LOG_DEBUG, msg)
+
+
+    def loginf(msg):
+        logmsg(syslog.LOG_INFO, msg)
+
+
+    def logerr(msg):
+        logmsg(syslog.LOG_ERR, msg)
 
 
 class Windy(weewx.restx.StdRESTbase):
-    _DEFAULT_URL = 'https://stations.windy.com/pws/update'
+    DEFAULT_URL = 'https://stations.windy.com/pws/update'
 
     def __init__(self, engine, cfg_dict):
         super(Windy, self).__init__(engine, cfg_dict)
@@ -78,7 +90,7 @@ class Windy(weewx.restx.StdRESTbase):
         if site_dict is None:
             return
         site_dict.setdefault('station', 0)
-        site_dict.setdefault('server_url', Windy._DEFAULT_URL)
+        site_dict.setdefault('server_url', Windy.DEFAULT_URL)
 
         # FIXME: we should not have to do this here!
         binding = site_dict.pop('binding', 'wx_binding')
@@ -100,12 +112,12 @@ class Windy(weewx.restx.StdRESTbase):
 
 class WindyThread(weewx.restx.RESTThread):
 
-    def __init__(self, queue, api_key, station, server_url=Windy._DEFAULT_URL,
+    def __init__(self, q, api_key, station, server_url=Windy.DEFAULT_URL,
                  skip_upload=False, manager_dict=None,
                  post_interval=None, max_backlog=sys.maxsize, stale=None,
                  log_success=True, log_failure=True,
                  timeout=60, max_tries=3, retry_wait=5):
-        super(WindyThread, self).__init__(queue,
+        super(WindyThread, self).__init__(q,
                                           protocol_name='Windy',
                                           manager_dict=manager_dict,
                                           post_interval=post_interval,
@@ -124,6 +136,8 @@ class WindyThread(weewx.restx.RESTThread):
     def format_url(self, _):
         """Return an URL for doing a POST to windy"""
         url = '%s/%s' % (self.server_url, self.api_key)
+        if weewx.debug >= 2:
+            logdbg("url: %s" % url)
         return url
 
     def get_post_body(self, record):
@@ -131,8 +145,8 @@ class WindyThread(weewx.restx.RESTThread):
         record_m = weewx.units.to_METRICWX(record)
         data = {
             'station': self.station,  # integer identifier, usually "0"
-            'dateutc':time.strftime("%Y-%m-%d %H:%M:%S",
-                                    time.gmtime(record_m['dateTime']))
+            'dateutc': time.strftime("%Y-%m-%d %H:%M:%S",
+                                     time.gmtime(record_m['dateTime']))
             }
         if 'outTemp' in record_m:
             data['temp'] = record_m['outTemp']  # degree_C
@@ -155,7 +169,9 @@ class WindyThread(weewx.restx.RESTThread):
 
         body = {
             'observations': [data]
-        }
+            }
+        if weewx.debug >= 2:
+            logdbg("JSON: %s" % body)
 
         return json.dumps(body), 'application/json'
 
@@ -167,6 +183,7 @@ if __name__ == "__main__":
     class FakeMgr(object):
         table_name = 'fake'
 
+        # noinspection PyUnusedLocal,PyMethodMayBeStatic
         def getSql(self, query, value):
             return None
 
@@ -182,5 +199,5 @@ if __name__ == "__main__":
          'windSpeed': 10,
          'windDir': 32}
     print(t.format_url(r))
-#    print(t.get_post_body(r))
+    #    print(t.get_post_body(r))
     t.process_record(r, FakeMgr())

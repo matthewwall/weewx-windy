@@ -1,3 +1,8 @@
+0.5 20apr2019
+* If debug >= 2, post urls and JSON to the log
+* If available, use the weewx v4 log api.
+* Ran through PyCharm code inspection
+
 0.4 23apr2019
 * station id is necessary only for multiple stations, and is an integer
 

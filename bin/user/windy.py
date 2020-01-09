@@ -48,7 +48,7 @@ import weewx.restx
 import weewx.units
 from weeutil.weeutil import to_bool
 
-VERSION = "0.4"
+VERSION = "0.5"
 
 REQUIRED_WEEWX = "3.8.0"
 if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
@@ -147,7 +147,10 @@ class WindyThread(weewx.restx.RESTThread):
         if 'dewpoint' in record_m:
             data['dewpoint'] = record_m['dewpoint']  # degree_C
         if 'barometer' in record_m:
-            data['pressure'] = 100.0 * record_m['barometer']  # Pascals
+            if record_m['barometer'] is not None:
+                data['pressure'] = 100.0 * record_m['barometer']  # Pascals
+            else:
+                data['pressure'] = None
         if 'hourRain' in record_m:
             data['precip'] = record_m['hourRain']  # mm in past hour
         if 'UV' in record_m:

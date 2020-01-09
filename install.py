@@ -1,7 +1,7 @@
 # installer for windy
 # Copyright 2019-2020 Matthew Wall
 
-from setup import ExtensionInstaller
+from weecfg.extension import ExtensionInstaller
 
 def loader():
     return WindyInstaller()

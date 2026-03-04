@@ -43,7 +43,6 @@ except ImportError:
     # noinspection PyUnresolvedReferences
     from urllib import urlencode
 
-from distutils.version import StrictVersion
 import json
 import sys
 import time
@@ -55,11 +54,6 @@ import weewx.units
 from weeutil.weeutil import to_bool, to_int
 
 VERSION = "0.7"
-
-REQUIRED_WEEWX = "3.8.0"
-if StrictVersion(weewx.__version__) < StrictVersion(REQUIRED_WEEWX):
-    raise weewx.UnsupportedFeature("weewx %s or greater is required, found %s"
-                                   % (REQUIRED_WEEWX, weewx.__version__))
 
 try:
     # Test for new-style weewx logging by trying to import weeutil.logger

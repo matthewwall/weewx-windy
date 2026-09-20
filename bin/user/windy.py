@@ -1,29 +1,37 @@
 # Copyright 2019-2026 Matthew Wall
 
 """
-This is a weewx extension that uploads data to a windy.com
+This is a weewx extension that uploads data to windy.com
 
 http://windy.com
 
-The protocol is described at the windy community forum:
+It posts to the Windy Stations API v2, which is documented at:
 
-https://community.windy.com/topic/8168/report-you-weather-station-data-to-windy
+https://stations.windy.com/api-reference
+
+Authentication is the per-station password shown on the station detail page
+under "My Stations" at https://stations.windy.com/stations
+
+Note that the station password is NOT the same thing as an API key created on
+the "API Keys" page.  An API key manages stations and reads open-licensed
+station data; it cannot upload observations.
 
 Minimal configuration
 
 [StdRESTful]
     [[Windy]]
-        api_key = API_KEY
+        station_password = STATION_PASSWORD
+        station = STATION_ID
 
-If you have multiple stations, distinguish them using a station identifier.
-For example:
+Both options are required.  The station identifier is shown on the station
+detail page; it is a string, and is not necessarily a number.
 
-[StdRESTful]
-    [[Windy]]
-        api_key = API_KEY
-        station = 1
+For compatibility with configurations written for version 0.8 and earlier, the
+option api_key is accepted as a synonym for station_password.
 
-The default station identifier is 0.
+Windy accepts at most one observation per station every five minutes.  If the
+weewx archive_interval is 300 seconds then uploads sit exactly on that limit;
+raise post_interval if HTTP 429 responses appear.
 """
 
 # deal with differences between python 2 and python 3
@@ -43,7 +51,6 @@ except ImportError:
     # noinspection PyUnresolvedReferences
     from urllib import urlencode
 
-import json
 import logging
 import sys
 import time
@@ -52,9 +59,9 @@ import weewx
 import weewx.manager
 import weewx.restx
 import weewx.units
-from weeutil.weeutil import to_bool, to_int, version_compare
+from weeutil.weeutil import to_bool, version_compare
 
-VERSION = "0.8"
+VERSION = "0.9"
 
 REQUIRED_WEEWX = "4.1.0"
 if version_compare(weewx.__version__, REQUIRED_WEEWX) < 0:
@@ -73,14 +80,30 @@ def logerr(msg):
     log.error(msg)
 
 class Windy(weewx.restx.StdRESTbase):
-    DEFAULT_URL = 'https://stations.windy.com/pws/update'
+    DEFAULT_URL = 'https://stations.windy.com/api/v2/observation/update'
 
     def __init__(self, engine, cfg_dict):
         super(Windy, self).__init__(engine, cfg_dict)
         loginf("version is %s" % VERSION)
-        site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy', 'api_key')
+        # the station identifier is mandatory for the v2 API
+        site_dict = weewx.restx.get_site_dict(cfg_dict, 'Windy', 'station')
         if site_dict is None:
             return
+
+        # Through version 0.8 this option was called api_key.  The value it
+        # holds is the per-station password, so station_password is the
+        # preferred name, but accept the old spelling so that existing
+        # configurations keep working.
+        password = site_dict.pop('station_password', None)
+        legacy_key = site_dict.pop('api_key', None)
+        if password is None and legacy_key is not None:
+            password = legacy_key
+            loginf("option api_key is deprecated;"
+                   " please rename it to station_password")
+        if password is None:
+            logerr("Data will not be posted: Missing option station_password")
+            return
+        site_dict['station_password'] = password
 
         try:
             site_dict['manager_dict'] = weewx.manager.get_manager_dict_from_config(cfg_dict, 'wx_binding')
@@ -99,7 +122,8 @@ class Windy(weewx.restx.StdRESTbase):
 
 class WindyThread(weewx.restx.RESTThread):
 
-    def __init__(self, q, api_key, station=0, server_url=Windy.DEFAULT_URL,
+    def __init__(self, q, station_password, station,
+                 server_url=Windy.DEFAULT_URL,
                  skip_upload=False, manager_dict=None,
                  post_interval=None, max_backlog=sys.maxsize, stale=None,
                  log_success=True, log_failure=True,
@@ -115,56 +139,65 @@ class WindyThread(weewx.restx.RESTThread):
                                           max_tries=max_tries,
                                           timeout=timeout,
                                           retry_wait=retry_wait)
-        self.api_key = api_key
-        self.station = to_int(station)
+        self.station_password = station_password
+        # v2 station identifiers are strings, not integers
+        self.station = str(station).strip()
         self.server_url = server_url
-        loginf("Data will be uploaded to %s" % self.server_url)
         self.skip_upload = to_bool(skip_upload)
+        loginf("Data for station %s will be uploaded to %s"
+               % (self.station, self.server_url))
 
-    def format_url(self, _):
-        """Return an URL for doing a POST to windy"""
-        url = '%s/%s' % (self.server_url, self.api_key)
-        if weewx.debug >= 2:
-            logdbg("url: %s" % url)
-        return url
+    def format_url(self, record):
+        """Return an URL for doing a GET to windy.
 
-    def get_post_body(self, record):
-        """Specialized version for doing a POST to windy"""
+        The v2 API takes the entire observation as query parameters.  The
+        station password may be passed either as the PASSWORD parameter or as
+        a bearer token; this uses the parameter.
+        """
         record_m = weewx.units.to_METRICWX(record)
+
         data = {
-            'station': self.station,  # integer identifier, usually "0"
+            'id': self.station,
             'dateutc': time.strftime("%Y-%m-%d %H:%M:%S",
-                                     time.gmtime(record_m['dateTime']))
-            }
-        if 'outTemp' in record_m:
-            data['temp'] = record_m['outTemp']  # degree_C
-        if 'windSpeed' in record_m:
-            data['wind'] = record_m['windSpeed']  # m/s
-        if 'windDir' in record_m:
-            data['winddir'] = record_m['windDir']  # degree
-        if 'windGust' in record_m:
-            data['gust'] = record_m['windGust']  # m/s
-        if 'outHumidity' in record_m:
-            data['rh'] = record_m['outHumidity']  # percent
-        if 'dewpoint' in record_m:
-            data['dewpoint'] = record_m['dewpoint']  # degree_C
-        if 'barometer' in record_m:
-            if record_m['barometer'] is not None:
-                data['pressure'] = 100.0 * record_m['barometer']  # Pascals
-            else:
-                data['pressure'] = None
-        if 'hourRain' in record_m:
-            data['precip'] = record_m['hourRain']  # mm in past hour
-        if 'UV' in record_m:
-            data['uv'] = record_m['UV']
+                                     time.gmtime(record_m['dateTime'])),
+            'softwaretype': 'weewx-%s' % weewx.__version__,
+        }
+        if record_m.get('outTemp') is not None:
+            data['temp'] = round(record_m['outTemp'], 2)          # degree_C
+        if record_m.get('windSpeed') is not None:
+            data['wind'] = round(record_m['windSpeed'], 2)        # m/s
+        if record_m.get('windDir') is not None:
+            # Windy validates winddir as an integer even though the published
+            # schema declares it a number, so an averaged wind direction is
+            # rejected with HTTP 400 "winddir must be an integer number".
+            data['winddir'] = int(round(record_m['windDir']))     # degree
+        if record_m.get('windGust') is not None:
+            data['gust'] = round(record_m['windGust'], 2)         # m/s
+        if record_m.get('outHumidity') is not None:
+            data['rh'] = round(record_m['outHumidity'], 2)        # percent
+        if record_m.get('dewpoint') is not None:
+            data['dewpoint'] = round(record_m['dewpoint'], 2)     # degree_C
+        if record_m.get('barometer') is not None:
+            data['pressure'] = round(100.0 * record_m['barometer'], 1)  # Pa
+        if record_m.get('hourRain') is not None:
+            data['precip'] = round(record_m['hourRain'], 2)   # mm in past hour
+        if record_m.get('UV') is not None:
+            data['uv'] = round(record_m['UV'], 2)
+        if record_m.get('radiation') is not None:
+            data['solarradiation'] = round(record_m['radiation'], 1)  # W/m^2
 
-        body = {
-            'observations': [data]
-            }
         if weewx.debug >= 2:
-            logdbg("JSON: %s" % body)
+            logdbg("url: %s?%s&PASSWORD=XXX"
+                   % (self.server_url, urlencode(data)))
 
-        return json.dumps(body), 'application/json'
+        # add the password last so that the redacted line logged above is an
+        # accurate rendering of everything else in the query string
+        data['PASSWORD'] = self.station_password
+        return '%s?%s' % (self.server_url, urlencode(data))
+
+    # There is deliberately no get_post_body here.  The v2 API expects a GET
+    # with query parameters, and the inherited implementation returns None,
+    # which makes RESTThread issue a GET rather than a POST.
 
 
 # Use this hook to test the uploader:
@@ -177,7 +210,7 @@ if __name__ == "__main__":
     weeutil.logger.setup('windy', {})
 
     q = queue.Queue()
-    t = WindyThread(q, api_key='123', station=0)
+    t = WindyThread(q, station_password='123', station='test-station')
     t.start()
     r = {'dateTime': int(time.time() + 0.5),
          'usUnits': weewx.US,
@@ -189,4 +222,3 @@ if __name__ == "__main__":
     print(t.format_url(r))
     q.put(r)
     q.put(None)
-    t.join(30)

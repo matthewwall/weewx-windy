@@ -1,3 +1,14 @@
+0.9 20sep2026
+* Migrated to the Windy Stations API v2.  The endpoint used through 0.8 was
+  retired in January 2026 and rejects credentials issued after that date.
+* Uploads are now a GET with query parameters rather than a POST of JSON.
+* New option station_password, which is what windy calls this value.  The
+  previous option name api_key is still accepted as a synonym.
+* The station option is now required, and is a string rather than an integer.
+* Round wind direction to an integer.  Windy rejects fractional values with
+  HTTP 400 even though its published schema declares the field a number.
+* Send solar radiation when the station reports it.
+
 0.8 04mar2026
 * Removed references to distutils. -tk
 * Minimum supported version of WeeWX is 4.1.

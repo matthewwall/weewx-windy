@@ -1,3 +1,14 @@
+1.0 29sep2026
+* Migrated to Windy Stations API v2 (/api/v2/observation/update).
+  The legacy API shuts down at the end of 2026.
+* Authenticate with the per-station password, sent as a Bearer token.
+  The account API key no longer works for uploads.
+* New required options station_id and password replace api_key and station.
+* Send winddir as an integer; the v2 API rejects decimal values.
+* Handle v2 responses: stop on bad password, skip duplicates (409) and
+  rate-limited uploads (429).
+* Default post_interval is 300 and stale is 7200 to match the v2 limits.
+
 0.8 04mar2026
 * Removed references to distutils. -tk
 * Minimum supported version of WeeWX is 4.1.

@@ -103,11 +103,11 @@ class WindyInstaller(ExtensionInstaller):
                 windy['password'] = password
                 changed = True
             _check_credentials(station_id, password, out)
-            for key in legacy:
-                del windy[key]
-                changed = True
             if legacy:
-                out("Windy: removed legacy option(s) %s." % ', '.join(legacy))
+                _retire_legacy(windy, legacy)
+                changed = True
+                out("Windy: commented out legacy option(s) %s."
+                    % ', '.join(legacy))
         else:
             out("Windy: set station_id and password in the [[Windy]] section"
                 " of weewx.conf, then restart weewx.")
@@ -116,6 +116,38 @@ class WindyInstaller(ExtensionInstaller):
                     " once the new credentials are set." % ', '.join(legacy))
 
         return changed
+
+
+def _retire_legacy(windy, legacy):
+    """Comment out legacy options and keep the user's comments.
+
+    configobj attaches comments to the option that follows them, so deleting
+    an option also deletes its comments. This moves those comments, plus a
+    commented-out copy of each legacy line, onto station_id. It then places
+    station_id and password where the first legacy option was.
+    """
+    scalars = getattr(windy, 'scalars', None)
+    position = None
+    if scalars is not None:
+        position = min(scalars.index(k) for k in legacy)
+
+    carried = []
+    for i, key in enumerate(legacy):
+        carried.extend(windy.comments.get(key, []))
+        if i == 0:
+            carried.append('# Legacy option(s) below are not used by the v2 API.')
+        line = '# %s = %s' % (key, windy[key])
+        inline = windy.inline_comments.get(key)
+        if inline:
+            line = '%s %s' % (line, inline)
+        carried.append(line)
+        del windy[key]
+    windy.comments['station_id'] = carried + windy.comments.get('station_id', [])
+
+    if scalars is not None:
+        for key in ('station_id', 'password'):
+            scalars.remove(key)
+        scalars[position:position] = ['station_id', 'password']
 
 
 def _is_set(value):

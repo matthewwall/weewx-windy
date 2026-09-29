@@ -8,6 +8,9 @@
 * Handle v2 responses: stop on bad password, skip duplicates (409) and
   rate-limited uploads (429).
 * Default post_interval is 300 and stale is 7200 to match the v2 limits.
+* Installer prompts for station_id and password, and checks them against
+  the v2 API. On upgrade it comments out api_key and station and keeps any
+  comments in the [[Windy]] section.
 
 0.8 04mar2026
 * Removed references to distutils. -tk

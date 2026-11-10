@@ -231,6 +231,10 @@ class WindyThread(weewx.restx.RESTThread):
         """Map Windy v2 error codes to weewx upload outcomes."""
         code = getattr(e, 'code', None)
         if code is None:
+            # Network faults (DNS, refused connection, timeout). weewx logs
+            # these at debug level only, which hides the cause of repeated
+            # "Failed upload after N tries" errors. Log the reason instead.
+            self._log_attempt(e, count)
             super(WindyThread, self).handle_exception(e, count)
             return
 
@@ -259,7 +263,16 @@ class WindyThread(weewx.restx.RESTThread):
             raise weewx.restx.AbortedPost("Rate limited (429), retry after %s"
                                           % retry_after)
 
+        self._log_attempt(e, count)
         super(WindyThread, self).handle_exception(e, count)
+
+    def _log_attempt(self, e, count):
+        """Log why an upload attempt failed: info for a retry, error on the last."""
+        msg = "Upload attempt %d of %d failed: %s" % (count, self.max_tries, e)
+        if count >= self.max_tries:
+            logerr(msg)
+        else:
+            loginf(msg)
 
 
 # Use this hook to test the uploader:

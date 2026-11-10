@@ -1,6 +1,9 @@
 1.0.1 10nov2026
 * Fix startup crash on weewx 4.x. version_compare only exists in weewx 5.0
   and later, so fall back to a local comparison when it is missing.
+* Log the reason for each failed upload attempt (info for retries, error on
+  the last). weewx logs these at debug only, so network faults such as DNS
+  failures showed only "Failed upload after 3 tries".
 
 1.0 29sep2026
 * Migrated to Windy Stations API v2 (/api/v2/observation/update).

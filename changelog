@@ -1,3 +1,7 @@
+1.0.1 10nov2026
+* Fix startup crash on weewx 4.x. version_compare only exists in weewx 5.0
+  and later, so fall back to a local comparison when it is missing.
+
 1.0 29sep2026
 * Migrated to Windy Stations API v2 (/api/v2/observation/update).
   The legacy API shuts down at the end of 2026.

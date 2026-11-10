@@ -61,9 +61,23 @@ import weewx
 import weewx.manager
 import weewx.restx
 import weewx.units
-from weeutil.weeutil import to_bool, to_int, version_compare
+from weeutil.weeutil import to_bool, to_int
 
-VERSION = "1.0"
+try:
+    # weewx 5.0 and later
+    from weeutil.weeutil import version_compare
+except ImportError:
+    # weewx 4.x has no version_compare, so compare numeric parts locally
+    def version_compare(v1, v2):
+        import re
+
+        def parts(v):
+            return [int(x) for x in re.findall(r'\d+', v)[:3]]
+
+        a, b = parts(v1), parts(v2)
+        return (a > b) - (a < b)
+
+VERSION = "1.0.1"
 
 REQUIRED_WEEWX = "4.1.0"
 if version_compare(weewx.__version__, REQUIRED_WEEWX) < 0:

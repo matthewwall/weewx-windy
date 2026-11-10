@@ -36,7 +36,7 @@ except ImportError:
     # noinspection PyUnresolvedReferences
     from urllib2 import Request, urlopen, HTTPError
 
-VERSION = "1.0"
+VERSION = "1.0.1"
 PLACEHOLDER = 'replace_me'
 CHECK_URL = 'https://stations.windy.com/api/v2/observation?latestLimit=1'
 LEGACY_OPTIONS = ('api_key', 'station')

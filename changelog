@@ -1,3 +1,24 @@
+1.0.1 10nov2026
+* Fix startup crash on weewx 4.x. version_compare only exists in weewx 5.0
+  and later, so fall back to a local comparison when it is missing.
+* Log the reason for each failed upload attempt (info for retries, error on
+  the last). weewx logs these at debug only, so network faults such as DNS
+  failures showed only "Failed upload after 3 tries".
+
+1.0 29sep2026
+* Migrated to Windy Stations API v2 (/api/v2/observation/update).
+  The legacy API shuts down at the end of 2026.
+* Authenticate with the per-station password, sent as a Bearer token.
+  The account API key no longer works for uploads.
+* New required options station_id and password replace api_key and station.
+* Send winddir as an integer; the v2 API rejects decimal values.
+* Handle v2 responses: stop on bad password, skip duplicates (409) and
+  rate-limited uploads (429).
+* Default post_interval is 300 and stale is 7200 to match the v2 limits.
+* Installer prompts for station_id and password, and checks them against
+  the v2 API. On upgrade it comments out api_key and station and keeps any
+  comments in the [[Windy]] section.
+
 0.8 04mar2026
 * Removed references to distutils. -tk
 * Minimum supported version of WeeWX is 4.1.
